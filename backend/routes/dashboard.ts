@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
-import prisma from './db.js';
+import prisma from '../config/db.js';
 import { PolicyStatus, AuditStatus, FindingStatus, Severity } from '@prisma/client';
-import { authenticate, AuthenticatedRequest } from './middleware.js';
+import { authenticate, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -172,7 +172,7 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
       } : null
     }));
 
-    // Historical trends (dynamic DB-driven)
+    // Historical trends
     const months = [];
     const trends = [];
     const now = new Date();

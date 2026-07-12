@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import prisma from '../db.js';
+import prisma from '../config/db.js';
 
 async function main() {
   console.log('Seeding login users & roles only...');

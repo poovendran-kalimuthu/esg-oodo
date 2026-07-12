@@ -4,14 +4,16 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { errorHandler, rateLimiter, authenticate } from './middleware.js';
-import prisma from './db.js';
+import { errorHandler } from './middleware/error.js';
+import { rateLimiter } from './middleware/rateLimit.js';
+import { authenticate } from './middleware/auth.js';
+import prisma from './config/db.js';
 
-import authRouter from './auth.js';
-import policyRouter from './policies.js';
-import auditRouter from './audits.js';
-import findingsRouter from './findings.js';
-import dashboardRouter from './dashboard.js';
+import authRouter from './routes/auth.js';
+import policyRouter from './routes/policies.js';
+import auditRouter from './routes/audits.js';
+import findingsRouter from './routes/findings.js';
+import dashboardRouter from './routes/dashboard.js';
 
 dotenv.config();
 

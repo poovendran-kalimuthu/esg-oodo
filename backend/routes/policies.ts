@@ -1,8 +1,8 @@
 import { Router, Response, NextFunction } from 'express';
-import prisma from './db.js';
+import prisma from '../config/db.js';
 import { PolicyStatus } from '@prisma/client';
-import { authenticate, authorize, AuthenticatedRequest } from './middleware.js';
-import { formatPolicy } from './formatters.js';
+import { authenticate, authorize, AuthenticatedRequest } from '../middleware/auth.js';
+import { formatPolicy } from '../utils/formatters.js';
 
 const router = Router();
 

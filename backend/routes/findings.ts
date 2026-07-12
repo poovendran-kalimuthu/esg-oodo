@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from './db.js';
+import prisma from '../config/db.js';
 import { FindingStatus, Severity } from '@prisma/client';
-import { authenticate, authorize, AuthenticatedRequest } from './middleware.js';
-import { formatFinding } from './formatters.js';
-import { encrypt } from './crypto.js';
+import { authenticate, authorize, AuthenticatedRequest } from '../middleware/auth.js';
+import { formatFinding } from '../utils/formatters.js';
+import { encrypt } from '../utils/crypto.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -240,7 +240,7 @@ router.patch('/:id/assign', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICE
     });
 
     const existingAction = await prisma.correctiveAction.findFirst({
-      where: { findingId: finding.id, ownerId }
+      where: {findingId: finding.id, ownerId}
     });
 
     if (!existingAction) {

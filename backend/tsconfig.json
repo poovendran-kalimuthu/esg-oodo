@@ -9,7 +9,11 @@
     "rootDir": "./"
   },
   "include": [
-    "*.ts",
+    "app.ts",
+    "config/**/*",
+    "middleware/**/*",
+    "routes/**/*",
+    "utils/**/*",
     "prisma/seed.ts"
   ]
 }
