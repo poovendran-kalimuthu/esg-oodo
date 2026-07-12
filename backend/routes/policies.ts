@@ -3,6 +3,7 @@ import prisma from '../config/db.js';
 import { PolicyStatus } from '@prisma/client';
 import { authenticate, authorize, AuthenticatedRequest } from '../middleware/auth.js';
 import { formatPolicy } from '../utils/formatters.js';
+import { awardPoints, checkPolicyBadges } from './gamification.js';
 
 const router = Router();
 
@@ -380,6 +381,13 @@ router.post('/:id/acknowledge', authenticate, async (req: AuthenticatedRequest, 
         ipAddress: req.ip || '127.0.0.1'
       }
     });
+
+    // Gamification: award XP and update district governance score
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { departmentId: true } });
+    if (user?.departmentId) {
+      await awardPoints(userId, user.departmentId, 'governance', 'policy_acknowledgement');
+      await checkPolicyBadges(userId);
+    }
 
     res.json({ success: true, acknowledgement: ack });
   } catch (err) {

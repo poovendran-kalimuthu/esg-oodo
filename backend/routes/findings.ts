@@ -4,6 +4,7 @@ import { FindingStatus, Severity } from '@prisma/client';
 import { authenticate, authorize, AuthenticatedRequest } from '../middleware/auth.js';
 import { formatFinding } from '../utils/formatters.js';
 import { encrypt } from '../utils/crypto.js';
+import { awardPoints } from './gamification.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -284,7 +285,7 @@ router.post('/:id/resolve', authenticate, upload.single('evidence'), async (req:
           { id: id.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/) ? id : '00000000-0000-0000-0000-000000000000' }
         ]
       },
-      include: { correctiveActions: true }
+      include: { correctiveActions: true, audit: { select: { id: true, auditorId: true, departmentId: true } } }
     });
 
     if (!finding) return res.status(404).json({ success: false, message: 'Finding not found' });
@@ -334,9 +335,7 @@ router.post('/:id/resolve', authenticate, upload.single('evidence'), async (req:
         data: { status: FindingStatus.RESOLVED }
       });
 
-      const audit = await prisma.audit.findUnique({
-        where: { id: finding.auditId }
-      });
+      const audit = await prisma.audit.findUnique({ where: { id: finding.auditId } });
       if (audit) {
         await prisma.notification.create({
           data: {
@@ -345,6 +344,17 @@ router.post('/:id/resolve', authenticate, upload.single('evidence'), async (req:
             message: `Finding '${finding.title}' has been marked as resolved by owner. Verification is required to close.`
           }
         });
+      }
+
+      // Gamification: award XP for compliance resolution
+      if (userId && finding.audit?.departmentId) {
+        // Check if critical and resolved before deadline
+        const isCritical = finding.severity === Severity.CRITICAL;
+        const beforeDeadline = new Date() <= new Date(finding.dueDate);
+        const activityType = (isCritical && beforeDeadline)
+          ? 'critical_finding_resolved'
+          : 'compliance_resolution';
+        await awardPoints(userId as string, finding.audit.departmentId, 'governance', activityType);
       }
     }
 

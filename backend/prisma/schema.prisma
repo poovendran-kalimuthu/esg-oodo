@@ -55,6 +55,9 @@ model Department {
   carbonTransactions  CarbonTransaction[]
   environmentMetric   DepartmentEnvironmentMetric?
   sustainabilityGoals SustainabilityGoal[]
+  employeePoints      EmployeePoints[]
+  districtScore       DistrictScore?
+  socialActivities    SocialActivity[]
   createdAt           DateTime                     @default(now()) @map("created_at")
   updatedAt           DateTime                     @updatedAt @map("updated_at")
   deletedAt           DateTime?                    @map("deleted_at")
@@ -78,6 +81,11 @@ model User {
   verifiedActions   CorrectiveAction[] @relation("ActionVerifier")
   notifications     Notification[]
   activityLogs      ActivityLog[]
+  // Gamification
+  employeePoints    EmployeePoints[]
+  employeeStreak    EmployeeStreak?
+  employeeBadges    EmployeeBadge[]
+  socialActivities  SocialActivity[]
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
   deletedAt         DateTime?          @map("deleted_at")
@@ -315,4 +323,104 @@ model EnvironmentReport {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("environment_reports")
+}
+
+// ─────────────────────────────────────────
+// ECOSPHERE NEXUS — GAMIFICATION MODELS
+// ─────────────────────────────────────────
+
+model EmployeePoints {
+  id           String     @id @default(uuid()) @db.Uuid
+  employeeId   String     @map("employee_id") @db.Uuid
+  employee     User       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  departmentId String     @map("department_id") @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id])
+  module       String     // environmental | governance | social
+  activityType String     @map("activity_type")
+  points       Int
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@map("employee_points")
+}
+
+model EmployeeStreak {
+  id               String    @id @default(uuid()) @db.Uuid
+  employeeId       String    @unique @map("employee_id") @db.Uuid
+  employee         User      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  currentStreak    Int       @default(0) @map("current_streak")
+  longestStreak    Int       @default(0) @map("longest_streak")
+  lastActivityDate DateTime? @map("last_activity_date")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("employee_streaks")
+}
+
+model EmployeeBadge {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeId String   @map("employee_id") @db.Uuid
+  employee   User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  badgeName  String   @map("badge_name")
+  earnedAt   DateTime @default(now()) @map("earned_at")
+
+  @@unique([employeeId, badgeName])
+  @@map("employee_badges")
+}
+
+model DistrictScore {
+  id               String     @id @default(uuid()) @db.Uuid
+  departmentId     String     @unique @map("department_id") @db.Uuid
+  department       Department @relation(fields: [departmentId], references: [id])
+  environmentScore Float      @default(0) @map("environment_score")
+  socialScore      Float      @default(0) @map("social_score")
+  governanceScore  Float      @default(0) @map("governance_score")
+  overallScore     Float      @default(0) @map("overall_score")
+  districtLevel    Int        @default(1) @map("district_level")
+  districtTitle    String     @default("Eco Garden") @map("district_title")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  @@map("district_scores")
+}
+
+model MonthlyAward {
+  id            String   @id @default(uuid()) @db.Uuid
+  awardType     String   @map("award_type")
+  recipientId   String?  @map("recipient_id") @db.Uuid
+  recipientName String   @map("recipient_name")
+  month         Int
+  year          Int
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("monthly_awards")
+}
+
+model RewardCatalog {
+  id             String @id @default(uuid()) @db.Uuid
+  rewardName     String @map("reward_name")
+  requiredPoints Int    @map("required_points")
+
+  @@map("reward_catalog")
+}
+
+// ─────────────────────────────────────────
+// SOCIAL MODULE
+// ─────────────────────────────────────────
+
+model SocialActivity {
+  id           String     @id @default(uuid()) @db.Uuid
+  employeeId   String     @map("employee_id") @db.Uuid
+  employee     User       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  departmentId String     @map("department_id") @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id])
+  activityType String     @map("activity_type") // csr_participation | volunteer_event | training_completion | mentoring_session
+  title        String
+  description  String     @default("")
+  hoursLogged  Float      @default(1) @map("hours_logged")
+  date         DateTime
+  status       String     @default("Completed") // Completed | Pending | Rejected
+  proofUrl     String?    @map("proof_url")
+  points       Int        @default(0)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@map("social_activities")
 }

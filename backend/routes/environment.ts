@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../config/db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, AuthenticatedRequest } from '../middleware/auth.js';
+import { awardPoints } from './gamification.js';
 
 const router = Router();
 
@@ -236,6 +237,12 @@ router.post('/transactions', authenticate, async (req: Request, res: Response, n
     // Automatically recalculate metrics and rankings
     await recalculateMetrics(dept.id);
 
+    // Gamification: award XP for logging a carbon transaction
+    const authReq = req as AuthenticatedRequest;
+    if (authReq.user?.id) {
+      await awardPoints(authReq.user.id, dept.id, 'environmental', 'carbon_reduction');
+    }
+
     res.status(201).json({ success: true, transaction: newTx });
   } catch (err) {
     next(err);
@@ -325,6 +332,14 @@ router.post('/goals', authenticate, async (req: Request, res: Response, next: Ne
         status
       }
     });
+
+    // Gamification: award XP if goal is immediately completed
+    if (status === 'Completed') {
+      const authReq = req as AuthenticatedRequest;
+      if (authReq.user?.id) {
+        await awardPoints(authReq.user.id, dept.id, 'environmental', 'sustainability_goal_completed');
+      }
+    }
 
     res.status(201).json({ success: true, goal: newGoal });
   } catch (err) {
