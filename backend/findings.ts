@@ -1,15 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../config/db.js';
+import prisma from './db.js';
 import { FindingStatus, Severity } from '@prisma/client';
-import { authenticate, authorize, AuthenticatedRequest } from '../../middleware/auth.js';
-import { formatFinding } from '../../utils/formatters.js';
+import { authenticate, authorize, AuthenticatedRequest } from './middleware.js';
+import { formatFinding } from './formatters.js';
+import { encrypt } from './crypto.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
 const router = Router();
 
-// Configure Multer for evidence uploads
 const uploadDir = 'uploads/';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -27,7 +27,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// 1. Get all findings
 router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { status, severity } = req.query;
@@ -77,7 +76,6 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
-// 2. Get single finding
 router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
 
@@ -120,7 +118,6 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
   }
 });
 
-// 3. Create a Finding (Auditor / Compliance / Admin)
 router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id, auditId, title, description, category, severity, ownerId, dueDate } = req.body;
 
@@ -164,7 +161,7 @@ router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITO
         findingId: id,
         auditId: audit.id,
         title,
-        description: description || '',
+        description: encrypt(description || ''),
         category,
         severity: targetSeverity,
         ownerId: ownerId || null,
@@ -179,7 +176,7 @@ router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITO
           findingId: finding.id,
           ownerId: ownerId,
           progressPercentage: 0,
-          resolutionNotes: 'Tracker created.'
+          resolutionNotes: encrypt('Tracker created.')
         }
       });
 
@@ -210,7 +207,6 @@ router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITO
   }
 });
 
-// 4. Update / Assign Finding Owner (Admin / Compliance / Auditor)
 router.patch('/:id/assign', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { ownerId } = req.body;
@@ -253,7 +249,7 @@ router.patch('/:id/assign', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICE
           findingId: finding.id,
           ownerId,
           progressPercentage: 0,
-          resolutionNotes: 'Action initialized'
+          resolutionNotes: encrypt('Action initialized')
         }
       });
     }
@@ -275,7 +271,6 @@ router.patch('/:id/assign', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICE
   }
 });
 
-// 5. Submit Corrective Action Evidence (Owner of Action)
 router.post('/:id/resolve', authenticate, upload.single('evidence'), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { notes, progress } = req.body;
@@ -327,7 +322,7 @@ router.post('/:id/resolve', authenticate, upload.single('evidence'), async (req:
       data: {
         progressPercentage: progressValue,
         evidenceUrl: fileUrl,
-        resolutionNotes: notes || action.resolutionNotes,
+        resolutionNotes: notes ? encrypt(notes) : action.resolutionNotes,
         closedAt: progressValue === 100 ? new Date() : null
       }
     });
@@ -369,7 +364,6 @@ router.post('/:id/resolve', authenticate, upload.single('evidence'), async (req:
   }
 });
 
-// 6. Verify and Close Finding (Auditor / Compliance / Admin)
 router.post('/:id/verify-close', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { isApproved, verificationNotes } = req.body;
@@ -416,7 +410,7 @@ router.post('/:id/verify-close', authenticate, authorize(['ADMIN', 'COMPLIANCE_O
         where: { id: action.id },
         data: {
           ...actionUpdate,
-          resolutionNotes: isApproved ? `[Approved] ${verificationNotes || ''}` : `[Rejected] ${verificationNotes || ''}`,
+          resolutionNotes: encrypt(isApproved ? `[Approved] ${verificationNotes || ''}` : `[Rejected] ${verificationNotes || ''}`),
           closedAt: isApproved ? new Date() : null
         }
       });

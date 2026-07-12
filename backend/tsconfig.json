@@ -9,12 +9,7 @@
     "rootDir": "./"
   },
   "include": [
-    "app.ts",
-    "config/**/*",
-    "middleware/**/*",
-    "modules/**/*",
-    "routes/**/*",
-    "utils/**/*",
-    "scratch/**/*"
+    "*.ts",
+    "prisma/seed.ts"
   ]
 }

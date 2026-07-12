@@ -1,12 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../config/db.js';
+import prisma from './db.js';
 import { AuditStatus } from '@prisma/client';
-import { authenticate, authorize, AuthenticatedRequest } from '../../middleware/auth.js';
-import { formatAudit } from '../../utils/formatters.js';
+import { authenticate, authorize, AuthenticatedRequest } from './middleware.js';
+import { formatAudit } from './formatters.js';
 
 const router = Router();
 
-// 1. Get all audits
 router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { status, type } = req.query;
@@ -46,7 +45,6 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
-// 2. Get single audit detail
 router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
 
@@ -91,7 +89,6 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
   }
 });
 
-// 3. Schedule / Create an Audit (Admin / Compliance Officer / Auditor)
 router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id, title, auditType, departmentId, auditorId, scheduledDate } = req.body;
 
@@ -153,7 +150,6 @@ router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITO
   }
 });
 
-// 4. Update Audit Status / Details (Admin / Compliance Officer / Auditor)
 router.patch('/:id/status', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER', 'AUDITOR']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { status } = req.body;

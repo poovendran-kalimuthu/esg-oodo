@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
-import prisma from '../../config/db.js';
+import prisma from './db.js';
 import { PolicyStatus, AuditStatus, FindingStatus, Severity } from '@prisma/client';
-import { authenticate, AuthenticatedRequest } from '../../middleware/auth.js';
+import { authenticate, AuthenticatedRequest } from './middleware.js';
 
 const router = Router();
 
@@ -172,17 +172,72 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
       } : null
     }));
 
-    const months = ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
-    const scoreDiff = scores.governanceScore - 75;
-    const trends = months.map((m, idx) => {
-      const ratio = (idx + 1) / months.length;
-      return {
-        month: m,
-        governanceScore: Math.min(Math.round(74 + (scoreDiff * ratio) + (Math.sin(idx) * 2)), 100),
-        policyCompliance: Math.min(Math.round(72 + ((scores.policyCompliance - 72) * ratio) + (Math.cos(idx) * 3)), 100),
-        auditCompletion: Math.min(Math.round(80 + ((scores.auditCompletion - 80) * ratio)), 100),
-      };
-    });
+    // Historical trends (dynamic DB-driven)
+    const months = [];
+    const trends = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = d.toLocaleString('default', { month: 'short' });
+      months.push({ label: monthLabel, date: d });
+    }
+
+    for (const m of months) {
+      const endOfMonth = new Date(m.date.getFullYear(), m.date.getMonth() + 1, 0, 23, 59, 59);
+
+      const totalEmployeesAtMonth = await prisma.user.count({
+        where: {
+          role: { name: 'EMPLOYEE' },
+          createdAt: { lte: endOfMonth }
+        }
+      });
+      
+      const publishedPoliciesAtMonth = await prisma.policy.count({
+        where: {
+          status: PolicyStatus.PUBLISHED,
+          effectiveDate: { lte: endOfMonth }
+        }
+      });
+      
+      const possibleAcksAtMonth = totalEmployeesAtMonth * publishedPoliciesAtMonth;
+      let policyCompliance = 100;
+      
+      if (possibleAcksAtMonth > 0) {
+        const actualAcksAtMonth = await prisma.policyAcknowledgement.count({
+          where: {
+            acknowledgedAt: { lte: endOfMonth }
+          }
+        });
+        policyCompliance = Math.round((actualAcksAtMonth / possibleAcksAtMonth) * 100);
+      }
+
+      const totalAuditsAtMonth = await prisma.audit.count({
+        where: {
+          auditDate: { lte: endOfMonth }
+        }
+      });
+      let auditCompletion = 100;
+      
+      if (totalAuditsAtMonth > 0) {
+        const completedAuditsAtMonth = await prisma.audit.count({
+          where: {
+            status: { in: [AuditStatus.COMPLETED, AuditStatus.CLOSED] },
+            completionDate: { lte: endOfMonth }
+          }
+        });
+        auditCompletion = Math.round((completedAuditsAtMonth / totalAuditsAtMonth) * 100);
+      }
+
+      const governanceScore = Math.round((policyCompliance + auditCompletion) / 2);
+
+      trends.push({
+        month: m.label,
+        governanceScore: Math.min(governanceScore, 100),
+        policyCompliance: Math.min(policyCompliance, 100),
+        auditCompletion: Math.min(auditCompletion, 100)
+      });
+    }
 
     res.json({
       success: true,

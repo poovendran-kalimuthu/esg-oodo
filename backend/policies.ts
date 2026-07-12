@@ -1,12 +1,11 @@
 import { Router, Response, NextFunction } from 'express';
-import prisma from '../../config/db.js';
+import prisma from './db.js';
 import { PolicyStatus } from '@prisma/client';
-import { authenticate, authorize, AuthenticatedRequest } from '../../middleware/auth.js';
-import { formatPolicy } from '../../utils/formatters.js';
+import { authenticate, authorize, AuthenticatedRequest } from './middleware.js';
+import { formatPolicy } from './formatters.js';
 
 const router = Router();
 
-// 1. Get all policies (authenticated)
 router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { status, category } = req.query;
@@ -48,7 +47,6 @@ router.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, n
   }
 });
 
-// 2. Get single policy details with versions & acknowledgement status
 router.get('/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
 
@@ -91,7 +89,6 @@ router.get('/:id', authenticate, async (req: AuthenticatedRequest, res: Response
   }
 });
 
-// 3. Create a policy (Admin / Compliance Officer)
 router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id, title, category, description, effectiveDate, expiryDate, departmentId } = req.body;
 
@@ -150,7 +147,6 @@ router.post('/', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), async
   }
 });
 
-// 4. Update policy details (Admin / Compliance Officer)
 router.put('/:id', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { title, category, description, effectiveDate, expiryDate, departmentId, status } = req.body;
@@ -229,7 +225,6 @@ router.put('/:id', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), asy
   }
 });
 
-// 5. Publish Policy (Admin / Compliance Officer)
 router.post('/:id/publish', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
 
@@ -293,7 +288,6 @@ router.post('/:id/publish', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICE
   }
 });
 
-// 6. Archive Policy (Admin / Compliance Officer)
 router.post('/:id/archive', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
 
@@ -332,7 +326,6 @@ router.post('/:id/archive', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICE
   }
 });
 
-// 7. Acknowledge a policy (Employee / Authenticated User)
 router.post('/:id/acknowledge', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { versionNumber } = req.body;
@@ -394,7 +387,6 @@ router.post('/:id/acknowledge', authenticate, async (req: AuthenticatedRequest, 
   }
 });
 
-// 8. Acknowledgement History / Metrics
 router.get('/history/metrics', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICER']), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const totalEmployees = await prisma.user.count({
