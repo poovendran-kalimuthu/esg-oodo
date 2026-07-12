@@ -3,6 +3,7 @@ import prisma from '../config/db.js';
 import { AuditStatus } from '@prisma/client';
 import { authenticate, authorize, AuthenticatedRequest } from '../middleware/auth.js';
 import { formatAudit } from '../utils/formatters.js';
+import { awardPoints } from './gamification.js';
 
 const router = Router();
 
@@ -201,6 +202,15 @@ router.patch('/:id/status', authenticate, authorize(['ADMIN', 'COMPLIANCE_OFFICE
         ipAddress: req.ip || '127.0.0.1'
       }
     });
+
+    // Gamification: award XP for audit completion
+    if (nextStatus === AuditStatus.COMPLETED && currentStatus !== AuditStatus.COMPLETED) {
+      const userId = req.user?.id;
+      const deptId = audit.departmentId;
+      if (userId && deptId) {
+        await awardPoints(userId, deptId, 'governance', 'audit_participation');
+      }
+    }
 
     res.json({
       success: true,

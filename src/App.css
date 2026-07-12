@@ -1,8 +1,0 @@
-/* Clean base reset for tailwind container alignment */
-#root {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-  border: none !important;
-  text-align: left !important;
-}

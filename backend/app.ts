@@ -14,6 +14,9 @@ import policyRouter from './routes/policies.js';
 import auditRouter from './routes/audits.js';
 import findingsRouter from './routes/findings.js';
 import dashboardRouter from './routes/dashboard.js';
+import environmentRouter from './routes/environment.js';
+import gamificationRouter from './routes/gamification.js';
+import socialRouter from './routes/social.js';
 
 dotenv.config();
 
@@ -37,6 +40,9 @@ app.use('/api/v1/policies', policyRouter);
 app.use('/api/v1/audits', auditRouter);
 app.use('/api/v1/findings', findingsRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
+app.use('/api/v1/environment', environmentRouter);
+app.use('/api/v1/gamification', gamificationRouter);
+app.use('/api/v1/social', socialRouter);
 
 // Utility route to fetch departments (needed for forms)
 app.get('/api/v1/departments', authenticate, async (req, res, next) => {
