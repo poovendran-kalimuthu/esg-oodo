@@ -47,14 +47,17 @@ model Role {
 }
 
 model Department {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique
-  users     User[]
-  policies  Policy[]
-  audits    Audit[]
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  id                  String                       @id @default(uuid()) @db.Uuid
+  name                String                       @unique
+  users               User[]
+  policies            Policy[]
+  audits              Audit[]
+  carbonTransactions  CarbonTransaction[]
+  environmentMetric   DepartmentEnvironmentMetric?
+  sustainabilityGoals SustainabilityGoal[]
+  createdAt           DateTime                     @default(now()) @map("created_at")
+  updatedAt           DateTime                     @updatedAt @map("updated_at")
+  deletedAt           DateTime?                    @map("deleted_at")
 
   @@map("departments")
 }
@@ -229,4 +232,87 @@ model ActivityLog {
   deletedAt DateTime? @map("deleted_at")
 
   @@map("activity_logs")
+}
+
+model EmissionFactor {
+  id                 String              @id @default(uuid()) @db.Uuid
+  source             String              @unique
+  category           String
+  unit               String
+  factor             Float
+  status             String              @default("Active") // Active or Inactive
+  carbonTransactions CarbonTransaction[]
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  @@map("emission_factors")
+}
+
+model ProductProfile {
+  id              String   @id @default(uuid()) @db.Uuid
+  productName     String   @map("product_name")
+  category        String
+  carbonFootprint Float    @map("carbon_footprint")
+  recyclable      Boolean  @default(true)
+  esgRating       String   @map("esg_rating") // A, B, C, D
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("product_profiles")
+}
+
+model CarbonTransaction {
+  id               String         @id @default(uuid()) @db.Uuid
+  departmentId     String         @map("department_id") @db.Uuid
+  department       Department     @relation(fields: [departmentId], references: [id])
+  emissionFactorId String         @map("emission_factor_id") @db.Uuid
+  emissionFactor   EmissionFactor @relation(fields: [emissionFactorId], references: [id])
+  quantity         Float
+  calculatedCo2    Float          @map("calculated_co2")
+  date             DateTime
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  @@map("carbon_transactions")
+}
+
+model DepartmentEnvironmentMetric {
+  id             String     @id @default(uuid()) @db.Uuid
+  departmentId   String     @unique @map("department_id") @db.Uuid
+  department     Department @relation(fields: [departmentId], references: [id])
+  totalEmissions Float      @default(0) @map("total_emissions")
+  carbonScore    Int        @default(100) @map("carbon_score")
+  monthlyChange  Float      @default(0) @map("monthly_change")
+  rank           Int        @default(1)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@map("department_environment_metrics")
+}
+
+model SustainabilityGoal {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String
+  departmentId String     @map("department_id") @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id])
+  targetCo2    Float      @map("target_co2")
+  currentCo2   Float      @map("current_co2")
+  deadline     DateTime
+  manager      String
+  status       String     @default("Active") // Active, On Track, Completed
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@map("sustainability_goals")
+}
+
+model EnvironmentReport {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String
+  description String
+  filePath    String?  @map("file_path")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("environment_reports")
 }
