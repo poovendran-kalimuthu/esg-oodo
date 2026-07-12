@@ -1,0 +1,466 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GreenLedger — Carbon Calculator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https:  //fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['Poppins', 'sans-serif'],
+          body: ['DM Sans', 'sans-serif'],
+        },
+        colors: {
+          brand: {
+            50: '#ecfdf5',
+            100: '#d1fae5',
+            400: '#34d399',
+            500: '#10b981',
+            600: '#059669',
+            700: '#047857',
+            900: '#064e3b',
+          },
+          ink: {
+            900: '#0f1712',
+            800: '#1a251e',
+            600: '#4a5a4f',
+            400: '#8a9a8e',
+          }
+        },
+        boxShadow: {
+          soft: '0 2px 8px rgba(15, 23, 18, 0.04)',
+          card: '0 1px 3px rgba(15, 23, 18, 0.06), 0 8px 24px -8px rgba(15, 23, 18, 0.08)',
+          glow: '0 8px 30px -6px rgba(16, 185, 129, 0.35)',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  * { font-family: 'DM Sans', sans-serif; }
+  .font-display { font-family: 'Poppins', sans-serif; }
+
+  body {
+    background-color: #f4f6f2;
+    background-image:
+      radial-gradient(circle at 8% 8%, rgba(16, 185, 129, 0.07), transparent 40%),
+      radial-gradient(circle at 95% 15%, rgba(52, 211, 153, 0.08), transparent 35%),
+      radial-gradient(circle at 50% 100%, rgba(6, 78, 59, 0.04), transparent 50%);
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cfd9d1; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #b3c1b6; }
+
+  .nav-item {
+    transition: all .18s ease;
+    position: relative;
+  }
+  .nav-item:hover:not(.nav-active) {
+    background: rgba(16, 185, 129, 0.06);
+    color: #064e3b;
+  }
+  .nav-active {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 4px 14px -3px rgba(16, 185, 129, 0.45);
+  }
+
+  .tab-btn { transition: all .2s ease; }
+  .tab-active {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.4);
+  }
+
+  .field-input {
+    transition: all .18s ease;
+    background: #f7f8f6;
+    border: 1.5px solid transparent;
+  }
+  .field-input:focus {
+    background: white;
+    border-color: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+    outline: none;
+  }
+  .field-input:hover:not(:focus) {
+    background: #f0f2ee;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.5);
+    transition: all .2s ease;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px -4px rgba(16, 185, 129, 0.6);
+  }
+  .btn-primary:active { transform: translateY(0px); }
+
+  .btn-ghost {
+    transition: all .18s ease;
+  }
+  .btn-ghost:hover {
+    background: #f0f2ee;
+    border-color: #d5dcd6;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .stagger { opacity: 0; animation: rise .5s ease forwards; }
+  .s1 { animation-delay: .05s } .s2 { animation-delay: .12s }
+  .s3 { animation-delay: .18s } .s4 { animation-delay: .24s }
+  .s5 { animation-delay: .30s } .s6 { animation-delay: .36s }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .count-up { animation: countUp .6s cubic-bezier(.2,.8,.2,1) .3s both; }
+  @keyframes countUp {
+    from { opacity: 0; transform: scale(.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .ring-track {
+    stroke-dasharray: 251.2;
+    stroke-dashoffset: 251.2;
+    animation: fillRing 1.2s cubic-bezier(.3,.8,.2,1) .4s forwards;
+  }
+  @keyframes fillRing {
+    to { stroke-dashoffset: 55; }
+  }
+
+  .pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .4; }
+  }
+
+  .row-hover { transition: background .15s ease; }
+  .row-hover:hover { background: #f7faf7; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 4px;
+    background: #dde5df;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 2px 6px rgba(16,185,129,.5);
+    cursor: pointer;
+    margin-top: -6px;
+  }
+</style>
+</head>
+<body class="min-h-screen text-ink-900">
+
+<div class="flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col border-r border-black/[0.06] bg-white/70 backdrop-blur-xl px-4 py-6">
+    <div class="flex items-center gap-2.5 px-2 mb-8">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-glow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C7 2 3 6 3 11c0 4 3 8 9 11 6-3 9-7 9-11 0-5-4-9-9-9z" fill="white" fill-opacity="0.95"/>
+          <path d="M12 6c-1.5 3-1.5 6 0 10M8 9c1 2 3 3 4 3M16 9c-1 2-3 3-4 3" stroke="#059669" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="font-display font-700 text-[17px] tracking-tight">GreenLedger</span>
+    </div>
+
+    <nav class="flex flex-col gap-1 text-[14.5px] font-medium">
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Overview
+      </a>
+      <a href="#" class="nav-item nav-active flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h3M13 11h3M8 15h3M13 15h3"/></svg>
+        Calculator
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-4 4 4 6-8 4 4"/><path d="M3 20h18"/></svg>
+        Explorer
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+        Targets
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8a2 2 0 00-2-2H6a2 2 0 00-2 2v4M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M4 12h16"/></svg>
+        Offsets
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="M9.5 8.5l5 5"/></svg>
+        Supply Chain
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3v18M17 3v18M3 7h4M17 7h4M3 17h4M17 17h4"/></svg>
+        Reports
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/></svg>
+        Benchmark
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.66 3.58 3 8 3s8-1.34 8-3V6M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>
+        Data Sources
+      </a>
+    </nav>
+
+    <div class="mt-auto pt-6">
+      <p class="px-3 text-[11px] font-semibold tracking-wider text-ink-400 uppercase mb-1">Account</p>
+      <nav class="flex flex-col gap-1 text-[14.5px] font-medium">
+        <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+          <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Information
+        </a>
+        <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-ink-600">
+          <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1h.1a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+          Setting
+        </a>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- Header -->
+    <header class="h-[72px] shrink-0 flex items-center justify-between px-8 border-b border-black/[0.06] bg-white/60 backdrop-blur-xl">
+      <div class="relative w-[340px]">
+        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search for anything..." class="w-full pl-10 pr-14 py-2.5 rounded-xl field-input text-[14px] placeholder:text-ink-400" />
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium text-ink-400 bg-black/[0.04] px-1.5 py-0.5 rounded-md">⌘K</span>
+      </div>
+
+      <div class="flex items-center gap-5">
+        <button class="relative w-9 h-9 rounded-full flex items-center justify-center btn-ghost border border-black/[0.06]">
+          <svg class="w-[18px] h-[18px] text-ink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 pulse-dot"></span>
+        </button>
+        <div class="w-px h-8 bg-black/[0.06]"></div>
+        <div class="flex items-center gap-3">
+          <img src="https://i.pravatar.cc/64?img=13" class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-soft" />
+          <div class="leading-tight">
+            <p class="text-[13.5px] font-semibold text-ink-900">George Russel</p>
+            <p class="text-[12px] text-ink-400">george.russel@gmail.com</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 flex gap-6 p-8 overflow-auto">
+
+      <!-- Left column -->
+      <section class="flex-1 min-w-0 flex flex-col gap-6">
+
+        <div class="stagger s1">
+          <h1 class="font-display font-700 text-[26px] tracking-tight text-ink-900">Carbon Calculator</h1>
+          <p class="text-ink-600 text-[14.5px] mt-1">Track emissions. Reduce footprint. Meet your targets.</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="stagger s2 flex items-center gap-1.5 p-1.5 bg-white/70 rounded-2xl border border-black/[0.05] shadow-soft w-fit">
+          <button class="tab-btn tab-active px-5 py-2.5 rounded-xl text-[14px] font-semibold flex items-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+            Energy
+          </button>
+          <button class="tab-btn px-5 py-2.5 rounded-xl text-[14px] font-medium text-ink-600 hover:text-ink-900">Travel</button>
+          <button class="tab-btn px-5 py-2.5 rounded-xl text-[14px] font-medium text-ink-600 hover:text-ink-900">Supply Chain</button>
+          <button class="tab-btn px-5 py-2.5 rounded-xl text-[14px] font-medium text-ink-600 hover:text-ink-900">Waste</button>
+        </div>
+
+        <!-- Form Card -->
+        <div class="stagger s3 glass-card rounded-3xl border border-black/[0.05] shadow-card p-8">
+          <h2 class="font-display font-600 text-[19px] text-ink-900">Log Emissions</h2>
+          <p class="text-ink-600 text-[13.5px] mt-0.5 mb-7">Enter consumption data across categories.</p>
+
+          <div class="grid grid-cols-1 gap-6">
+
+            <div>
+              <label class="flex items-center gap-2 text-[13.5px] font-semibold text-ink-800 mb-2">
+                <span class="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+                </span>
+                Electricity Consumption
+              </label>
+              <div class="relative">
+                <input type="text" value="8,500" class="field-input w-full rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink-900" />
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-ink-400">kWh / month</span>
+              </div>
+              <p class="text-[12px] text-ink-400 mt-1.5 ml-0.5">Grid: 0.365 kgCO2e/kWh (EU Avg)</p>
+            </div>
+
+            <div>
+              <label class="flex items-center gap-2 text-[13.5px] font-semibold text-ink-800 mb-2">
+                <span class="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M5 9l7-7 7 7"/></svg>
+                </span>
+                Natural Gas
+              </label>
+              <div class="relative">
+                <input type="text" value="4,200" class="field-input w-full rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink-900" />
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-ink-400">kWh / month</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="flex items-center gap-2 text-[13.5px] font-semibold text-ink-800 mb-2">
+                <span class="w-6 h-6 rounded-lg bg-sky-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="10" width="18" height="7" rx="2"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/></svg>
+                </span>
+                Fleet Vehicles
+              </label>
+              <div class="relative">
+                <input type="text" value="12,500" class="field-input w-full rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink-900" />
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-ink-400">km / month</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="flex items-center gap-2 text-[13.5px] font-semibold text-ink-800 mb-2">
+                <span class="w-6 h-6 rounded-lg bg-rose-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>
+                </span>
+                Waste Management
+              </label>
+              <div class="relative">
+                <input type="text" value="2.5" class="field-input w-full rounded-xl px-4 py-3.5 text-[15px] font-medium text-ink-900" />
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-ink-400">tons / month</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="flex items-center gap-3 mt-8">
+            <button class="btn-primary flex-1 text-white font-semibold text-[14.5px] py-3.5 rounded-xl flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Save Template
+            </button>
+            <button class="btn-ghost px-6 py-3.5 rounded-xl border border-black/[0.08] font-semibold text-[14.5px] text-ink-600">
+              Reset
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right column -->
+      <aside class="w-[340px] shrink-0 flex flex-col gap-6">
+
+        <div class="stagger s4 glass-card rounded-3xl border border-black/[0.05] shadow-card p-7">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="font-display font-600 text-[16px] text-ink-900">Live Result Preview</h3>
+            <span class="flex items-center gap-1.5 text-[11px] font-semibold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-500 pulse-dot"></span> LIVE
+            </span>
+          </div>
+
+          <div class="flex items-center justify-center mb-2">
+            <div class="relative w-[168px] h-[168px]">
+              <svg class="w-full h-full -rotate-90" viewBox="0 0 96 96">
+                <circle cx="48" cy="48" r="40" fill="none" stroke="#eef2ee" stroke-width="9"/>
+                <circle class="ring-track" cx="48" cy="48" r="40" fill="none" stroke="url(#gradRing)" stroke-width="9" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="gradRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#34d399"/>
+                    <stop offset="100%" stop-color="#059669"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center count-up">
+                <span class="font-display font-800 text-[32px] text-brand-600 leading-none tracking-tight">4.563</span>
+                <span class="text-[11.5px] text-ink-400 font-medium mt-1.5">tCO2e / month</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col divide-y divide-black/[0.05] mt-4">
+            <div class="row-hover flex items-center justify-between py-3 px-2 rounded-lg">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+                </span>
+                <span class="text-[13.5px] font-medium text-ink-800">Electricity</span>
+              </div>
+              <span class="text-[13.5px] font-semibold text-ink-900">3.103</span>
+            </div>
+            <div class="row-hover flex items-center justify-between py-3 px-2 rounded-lg">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M5 9l7-7 7 7"/></svg>
+                </span>
+                <span class="text-[13.5px] font-medium text-ink-800">Natural Gas</span>
+              </div>
+              <span class="text-[13.5px] font-semibold text-ink-900">0.924</span>
+            </div>
+            <div class="row-hover flex items-center justify-between py-3 px-2 rounded-lg">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="10" width="18" height="7" rx="2"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/></svg>
+                </span>
+                <span class="text-[13.5px] font-medium text-ink-800">Fleet</span>
+              </div>
+              <span class="text-[13.5px] font-semibold text-ink-900">0.406</span>
+            </div>
+            <div class="row-hover flex items-center justify-between py-3 px-2 rounded-lg">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6"/></svg>
+                </span>
+                <span class="text-[13.5px] font-medium text-ink-800">Waste</span>
+              </div>
+              <span class="text-[13.5px] font-semibold text-ink-900">0.130</span>
+            </div>
+          </div>
+
+          <button class="btn-primary w-full text-white font-semibold text-[14.5px] py-3.5 rounded-xl mt-6 flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+            Log Data
+          </button>
+        </div>
+
+        <!-- Bonus insight card -->
+        <div class="stagger s5 rounded-3xl p-6 bg-gradient-to-br from-ink-900 to-brand-900 text-white shadow-card relative overflow-hidden">
+          <div class="absolute -right-6 -top-6 w-28 h-28 bg-brand-500/20 rounded-full blur-2xl"></div>
+          <div class="absolute -left-4 -bottom-8 w-24 h-24 bg-brand-400/10 rounded-full blur-2xl"></div>
+          <div class="relative">
+            <p class="text-[12px] font-semibold text-brand-400 uppercase tracking-wider mb-2">Monthly Trend</p>
+            <p class="font-display font-600 text-[15px] leading-snug mb-4">You're tracking 12% below last month's emissions.</p>
+            <div class="flex items-end gap-1.5 h-14">
+              <div class="flex-1 bg-white/10 rounded-md" style="height:45%"></div>
+              <div class="flex-1 bg-white/10 rounded-md" style="height:70%"></div>
+              <div class="flex-1 bg-white/15 rounded-md" style="height:55%"></div>
+              <div class="flex-1 bg-white/10 rounded-md" style="height:85%"></div>
+              <div class="flex-1 bg-white/15 rounded-md" style="height:60%"></div>
+              <div class="flex-1 bg-gradient-to-t from-brand-400 to-brand-300 rounded-md" style="height:40%"></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

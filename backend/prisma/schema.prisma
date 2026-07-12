@@ -1,0 +1,232 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PolicyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AuditStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FindingStatus {
+  OPEN
+  ASSIGNED
+  RESOLVED
+  VERIFIED
+  CLOSED
+}
+
+model Role {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  users     User[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("roles")
+}
+
+model Department {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  users     User[]
+  policies  Policy[]
+  audits    Audit[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("departments")
+}
+
+model User {
+  id                String             @id @default(uuid()) @db.Uuid
+  email             String             @unique
+  passwordHash      String             @map("password_hash")
+  name              String
+  roleId            String             @map("role_id") @db.Uuid
+  role              Role               @relation(fields: [roleId], references: [id])
+  departmentId      String?            @map("department_id") @db.Uuid
+  department        Department?        @relation(fields: [departmentId], references: [id])
+  acknowledgements  PolicyAcknowledgement[]
+  createdAudits     Audit[]            @relation("AuditorAudits")
+  ownedFindings     AuditFinding[]     @relation("FindingOwner")
+  correctiveActions CorrectiveAction[] @relation("ActionOwner")
+  verifiedActions   CorrectiveAction[] @relation("ActionVerifier")
+  notifications     Notification[]
+  activityLogs      ActivityLog[]
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+
+  @@map("users")
+}
+
+model Policy {
+  id               String                 @id @default(uuid()) @db.Uuid
+  policyId         String                 @unique @map("policy_id") // e.g. "POL-001"
+  title            String
+  category         String
+  description      String
+  version          Int                    @default(1)
+  effectiveDate    DateTime               @map("effective_date")
+  expiryDate       DateTime               @map("expiry_date")
+  status           PolicyStatus           @default(DRAFT)
+  departmentId     String?                @map("department_id") @db.Uuid
+  department       Department?            @relation(fields: [departmentId], references: [id])
+  versions         PolicyVersion[]
+  acknowledgements PolicyAcknowledgement[]
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  deletedAt        DateTime?              @map("deleted_at")
+
+  @@index([status], name: "policy_status")
+  @@index([departmentId])
+  @@map("policies")
+}
+
+model PolicyVersion {
+  id            String       @id @default(uuid()) @db.Uuid
+  policyId      String       @map("policy_id") @db.Uuid
+  policy        Policy       @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  versionNumber Int          @map("version_number")
+  title         String
+  description   String
+  status        PolicyStatus
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+
+  @@map("policy_versions")
+}
+
+model PolicyAcknowledgement {
+  id                  String    @id @default(uuid()) @db.Uuid
+  employeeId          String    @map("employee_id") @db.Uuid
+  employee            User      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  policyId            String    @map("policy_id") @db.Uuid
+  policy              Policy    @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  acknowledgedAt      DateTime  @default(now()) @map("acknowledged_at")
+  policyVersion       Int       @map("policy_version")
+  ipAddress           String    @map("ip_address")
+  deviceInfo          String    @map("device_info")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  @@unique([employeeId, policyId, policyVersion])
+  @@map("policy_acknowledgements")
+}
+
+model Audit {
+  id             String         @id @default(uuid()) @db.Uuid
+  auditId        String         @unique @map("audit_id") // e.g. "AUD-001"
+  auditTitle     String         @map("audit_title")
+  auditType      String         @map("audit_type")
+  departmentId   String         @map("department_id") @db.Uuid
+  department     Department     @relation(fields: [departmentId], references: [id])
+  auditorId      String         @map("auditor_id") @db.Uuid
+  auditor        User           @relation("AuditorAudits", fields: [auditorId], references: [id])
+  auditDate      DateTime       @map("audit_date")
+  completionDate DateTime?      @map("completion_date")
+  status         AuditStatus    @default(SCHEDULED)
+  findings       AuditFinding[]
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  deletedAt      DateTime?      @map("deleted_at")
+
+  @@index([status], name: "audit_status")
+  @@index([departmentId])
+  @@map("audits")
+}
+
+model AuditFinding {
+  id                String             @id @default(uuid()) @db.Uuid
+  findingId         String             @unique @map("finding_id") // e.g. "FND-001"
+  auditId           String             @map("audit_id") @db.Uuid
+  audit             Audit              @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  title             String
+  description       String
+  category          String
+  severity          Severity           @default(LOW)
+  ownerId           String?            @map("owner_id") @db.Uuid
+  owner             User?              @relation("FindingOwner", fields: [ownerId], references: [id])
+  dueDate           DateTime           @map("due_date")
+  status            FindingStatus      @default(OPEN)
+  correctiveActions CorrectiveAction[]
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+
+  @@index([status])
+  @@index([severity], name: "severity")
+  @@index([dueDate], name: "due_date")
+  @@map("audit_findings")
+}
+
+model CorrectiveAction {
+  id                 String       @id @default(uuid()) @db.Uuid
+  findingId          String       @map("finding_id") @db.Uuid
+  finding            AuditFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  ownerId            String       @map("owner_id") @db.Uuid
+  owner              User         @relation("ActionOwner", fields: [ownerId], references: [id])
+  resolutionNotes    String       @map("resolution_notes")
+  progressPercentage Int          @map("progress_percentage")
+  evidenceUrl        String?      @map("evidence_url")
+  verifiedBy         String?      @map("verified_by") @db.Uuid
+  verifier           User?        @relation("ActionVerifier", fields: [verifiedBy], references: [id])
+  closedAt           DateTime?    @map("closed_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  deletedAt          DateTime?    @map("deleted_at")
+
+  @@map("corrective_actions")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String
+  ipAddress String    @map("ip_address")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("activity_logs")
+}
